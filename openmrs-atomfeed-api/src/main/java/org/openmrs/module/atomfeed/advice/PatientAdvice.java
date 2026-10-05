@@ -16,7 +16,6 @@ import java.lang.reflect.Method;
 import java.net.URI;
 import java.sql.SQLException;
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.UUID;
 
 public class PatientAdvice implements AfterReturningAdvice {
@@ -37,10 +36,7 @@ public class PatientAdvice implements AfterReturningAdvice {
     @Override
     public void afterReturning(Object returnValue, Method method, Object[] arguments, Object target) throws Throwable {
         if (method.getName().equals(SAVE_PATIENT_METHOD)) {
-            //This advice is created once when the module loads and caches the platform transaction
-            //manager, but OpenMRS builds a new session factory whenever the context refreshes e.g.
-            //on any module start or stop, which leaves the cached manager bound to a closed session
-            //factory, so it must be re-resolved on every call.
+            //rebind per call, the manager cached at construction goes stale after a context refresh
             atomFeedSpringTransactionManager.setTransactionManager(getSpringPlatformTransactionManager());
 
             String contents = String.format(TEMPLATE, ((Patient) returnValue).getUuid());
@@ -63,7 +59,6 @@ public class PatientAdvice implements AfterReturningAdvice {
     }
 
     private PlatformTransactionManager getSpringPlatformTransactionManager() {
-        List<PlatformTransactionManager> platformTransactionManagers = Context.getRegisteredComponents(PlatformTransactionManager.class);
-        return platformTransactionManagers.get(0);
+        return Context.getRegisteredComponent("transactionManager", PlatformTransactionManager.class);
     }
 }
