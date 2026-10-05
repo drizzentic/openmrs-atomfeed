@@ -37,6 +37,12 @@ public class PatientAdvice implements AfterReturningAdvice {
     @Override
     public void afterReturning(Object returnValue, Method method, Object[] arguments, Object target) throws Throwable {
         if (method.getName().equals(SAVE_PATIENT_METHOD)) {
+            //This advice is created once when the module loads and caches the platform transaction
+            //manager, but OpenMRS builds a new session factory whenever the context refreshes e.g.
+            //on any module start or stop, which leaves the cached manager bound to a closed session
+            //factory, so it must be re-resolved on every call.
+            atomFeedSpringTransactionManager.setTransactionManager(getSpringPlatformTransactionManager());
+
             String contents = String.format(TEMPLATE, ((Patient) returnValue).getUuid());
             final Event event = new Event(UUID.randomUUID().toString(), TITLE, LocalDateTime.now(), (URI) null, contents, CATEGORY);
 
